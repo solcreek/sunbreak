@@ -170,6 +170,12 @@ Run the Go test suite with SQLite FTS5 enabled:
 go test -tags sqlite_fts5 ./...
 ```
 
+Run the coverage gate:
+
+```sh
+scripts/test/coverage.sh
+```
+
 The early verification suite covers:
 
 - collector behavior with controlled HTTP status codes, headers, response shape, and item counts
@@ -177,6 +183,12 @@ The early verification suite covers:
 - Hacker News query construction and response normalization
 - Hacker News full-thread expansion, nested relation preservation, and link extraction
 - parse/preprocess -> SQLite persistence -> FTS search -> match/outbox/digest pipeline
+- config defaulting and YAML loading
+- matcher keyword/regex behavior and invalid rule rejection
+- digest grouping and truncation
+- HTTP API read/write and runner endpoints
+- notification dispatch behavior
+- storage CRUD, de-duplication, search, matches, outbox, digests, item links, and item relations
 
 Run the dashboard checks:
 

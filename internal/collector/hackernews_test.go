@@ -197,3 +197,25 @@ func TestHNCollectorRejectsBadStatus(t *testing.T) {
 		t.Fatalf("expected status code in error, got %v", err)
 	}
 }
+
+func TestHNConfigAndHelpers(t *testing.T) {
+	include := false
+	overlap := 0
+	raw := `{"include_comments":false,"hits_per_page":500,"max_pages":3,"max_stories_per_run":2,"max_comments_per_story":4,"max_depth":5,"overlap_seconds":0,"tags":"story","query":"sqlite"}`
+	opts, err := parseHNConfig(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.IncludeComments != include || opts.HitsPerPage != 100 || opts.MaxPages != 3 || opts.OverlapSeconds != overlap || opts.Query != "sqlite" {
+		t.Fatalf("unexpected HN config: %+v", opts)
+	}
+	if _, err := parseHNConfig("{"); err == nil {
+		t.Fatal("expected invalid config error")
+	}
+	if normalizeHNURL("mailto:test@example.com") != "" {
+		t.Fatal("expected unsupported scheme to be rejected")
+	}
+	if normalizeHNURL("/item?id=1") != "https://news.ycombinator.com/item?id=1" {
+		t.Fatalf("unexpected relative URL normalization")
+	}
+}

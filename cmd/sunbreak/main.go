@@ -97,8 +97,12 @@ func main() {
 }
 
 func writeCommandResult(output string, logger *slog.Logger, value map[string]any) {
+	writeCommandResultTo(os.Stdout, output, logger, value)
+}
+
+func writeCommandResultTo(stdout io.Writer, output string, logger *slog.Logger, value map[string]any) {
 	if output == "json" {
-		writeJSON(os.Stdout, value)
+		writeJSON(stdout, value)
 		return
 	}
 	logger.Info("command completed", "command", value["command"])

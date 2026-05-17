@@ -101,6 +101,9 @@ func (a *API) createRule(w http.ResponseWriter, r *http.Request) {
 		CaseSensitive: input.CaseSensitive,
 		Enabled:       enabled,
 	}
+	if rule.Type == "" {
+		rule.Type = "keyword"
+	}
 	id, err := a.store.UpsertRule(r.Context(), rule)
 	if err != nil {
 		writeError(w, err)
