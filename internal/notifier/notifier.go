@@ -6,7 +6,7 @@ import (
 	"io"
 	"log/slog"
 
-	"radar/internal/model"
+	"sunbreak/internal/model"
 )
 
 type Dispatcher struct {
@@ -33,7 +33,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, msg model.OutboxMessage) erro
 		if d.writer == nil {
 			return nil
 		}
-		_, err := fmt.Fprintf(d.writer, "\n[radar notification] %s\n%s\n", msg.Subject, msg.Body)
+		_, err := fmt.Fprintf(d.writer, "\n[sunbreak notification] %s\n%s\n", msg.Subject, msg.Body)
 		return err
 	default:
 		return fmt.Errorf("unsupported notification channel: %s", msg.Channel)

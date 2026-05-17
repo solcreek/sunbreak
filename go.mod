@@ -1,4 +1,4 @@
-module radar
+module sunbreak
 
 go 1.22
 

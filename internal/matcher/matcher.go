@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"radar/internal/model"
+	"sunbreak/internal/model"
 )
 
 type Matcher struct {

@@ -1,0 +1,10 @@
+.git
+data
+radar
+*.db
+*.db-shm
+*.db-wal
+web/node_modules
+web/dist
+web/.vite
+.DS_Store

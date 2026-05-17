@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"radar/internal/model"
+	"sunbreak/internal/model"
 )
 
 var benchmarkSink []Result
@@ -23,8 +23,8 @@ func BenchmarkMatcherMatch(b *testing.B) {
 
 	item := model.Item{
 		Title:   "SQLite based keyword monitoring engine",
-		Content: benchmarkText(4096) + " radar-term-42 alternative to f5bot sqlite monitoring",
-		URL:     "https://example.com/radar-term-42",
+		Content: benchmarkText(4096) + " sunbreak-term-42 alternative to f5bot sqlite monitoring",
+		URL:     "https://example.com/sunbreak-term-42",
 	}
 
 	for _, tc := range cases {
@@ -73,7 +73,7 @@ func BenchmarkMatcherCompile(b *testing.B) {
 func benchmarkRules(keywordCount, regexCount int) []model.Rule {
 	rules := make([]model.Rule, 0, keywordCount+regexCount)
 	for i := 0; i < keywordCount; i++ {
-		pattern := fmt.Sprintf("radar-term-%d", i)
+		pattern := fmt.Sprintf("sunbreak-term-%d", i)
 		if i%3 == 0 {
 			pattern = fmt.Sprintf("unused-term-%d", i)
 		}

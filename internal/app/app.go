@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"radar/internal/collector"
-	"radar/internal/config"
-	"radar/internal/digest"
-	"radar/internal/httpapi"
-	"radar/internal/matcher"
-	"radar/internal/model"
-	"radar/internal/notifier"
-	"radar/internal/storage"
+	"sunbreak/internal/collector"
+	"sunbreak/internal/config"
+	"sunbreak/internal/digest"
+	"sunbreak/internal/httpapi"
+	"sunbreak/internal/matcher"
+	"sunbreak/internal/model"
+	"sunbreak/internal/notifier"
+	"sunbreak/internal/storage"
 )
 
 type App struct {
@@ -294,6 +294,12 @@ func (a *App) collectSource(ctx context.Context, source model.Source) error {
 			}
 		}
 	}
+	if err := a.store.UpsertItemRelations(ctx, source.ID, result.Relations); err != nil {
+		return err
+	}
+	if err := a.store.UpsertItemLinks(ctx, source.ID, result.Links); err != nil {
+		return err
+	}
 	if err := a.store.MarkSourceSuccess(ctx, source.ID, result.Checkpoint, result.ETag, result.LastModified, next); err != nil {
 		return err
 	}
@@ -319,7 +325,7 @@ func matchOutbox(rule model.Rule, item model.Item, matchedText string) model.Out
 	)
 	return model.OutboxMessage{
 		Channel: "stdout",
-		Subject: "Radar match: " + rule.Name,
+		Subject: "Sunbreak match: " + rule.Name,
 		Body:    body,
 	}
 }

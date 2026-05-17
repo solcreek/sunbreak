@@ -1,24 +1,24 @@
 [Unit]
-Description=Radar keyword monitoring service
+Description=Sunbreak keyword monitoring service
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=radar
-Group=radar
-WorkingDirectory=/opt/radar
-ExecStart=/usr/local/bin/radar -config /etc/radar/config.yaml
+User=sunbreak
+Group=sunbreak
+WorkingDirectory=/opt/sunbreak
+ExecStart=/usr/local/bin/sunbreak -config /etc/sunbreak/config.yaml
 Restart=always
 RestartSec=5
 Environment=REDDIT_CLIENT_ID=
 Environment=REDDIT_CLIENT_SECRET=
-Environment=REDDIT_USER_AGENT=radar-monitor/0.1
+Environment=REDDIT_USER_AGENT=sunbreak-monitor/0.1
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
-ReadWritePaths=/var/lib/radar
+ReadWritePaths=/var/lib/sunbreak
 
 [Install]
 WantedBy=multi-user.target

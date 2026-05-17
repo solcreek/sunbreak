@@ -160,7 +160,7 @@ function App() {
         <header className="flex flex-col gap-3 border-b pb-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold">Radar</h1>
+              <h1 className="text-2xl font-semibold">Sunbreak</h1>
               <Badge variant={state.health?.ok ? 'secondary' : 'destructive'}>
                 {state.health?.ok ? 'online' : 'offline'}
               </Badge>

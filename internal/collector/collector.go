@@ -5,11 +5,13 @@ import (
 	"errors"
 	"net/http"
 
-	"radar/internal/model"
+	"sunbreak/internal/model"
 )
 
 type Result struct {
 	Items        []model.Item
+	Relations    []model.ItemRelation
+	Links        []model.ItemLink
 	Checkpoint   string
 	ETag         string
 	LastModified string

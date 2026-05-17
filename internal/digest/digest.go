@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"radar/internal/model"
+	"sunbreak/internal/model"
 )
 
 func Build(matches []model.Match, windowStart, windowEnd time.Time) model.Digest {
@@ -49,9 +49,9 @@ func Build(matches []model.Match, windowStart, windowEnd time.Time) model.Digest
 		}
 		body.WriteString("\n")
 	}
-	subject := fmt.Sprintf("Radar digest: %d matches", len(matches))
+	subject := fmt.Sprintf("Sunbreak digest: %d matches", len(matches))
 	if len(matches) == 0 {
-		subject = "Radar digest: no matches"
+		subject = "Sunbreak digest: no matches"
 	}
 	return model.Digest{
 		WindowStart: windowStart,

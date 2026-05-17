@@ -12,7 +12,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"radar/internal/model"
+	"sunbreak/internal/model"
 )
 
 type Store struct {
@@ -22,7 +22,7 @@ type Store struct {
 
 func Open(ctx context.Context, path string) (*Store, error) {
 	if path == "" {
-		path = "radar.db"
+		path = "sunbreak.db"
 	}
 	dsn := path
 	if !strings.Contains(dsn, "?") {
@@ -182,6 +182,157 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	var id int64
 	err = s.db.QueryRowContext(ctx, `SELECT id FROM items WHERE source_id = ? AND external_id = ?`, item.SourceID, item.ExternalID).Scan(&id)
 	return id, affected > 0, err
+}
+
+func (s *Store) UpsertItemRelations(ctx context.Context, sourceID int64, relations []model.ItemRelation) error {
+	if len(relations) == 0 {
+		return nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, relation := range relations {
+		if relation.SourceID != 0 {
+			sourceID = relation.SourceID
+		}
+		if sourceID == 0 {
+			return errors.New("relation source_id is required")
+		}
+		if relation.RootExternalID == "" || relation.ChildExternalID == "" {
+			continue
+		}
+		if relation.RelationType == "" {
+			relation.RelationType = "child"
+		}
+		rootID, ok, err := lookupItemID(ctx, tx, sourceID, relation.RootExternalID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		childID, ok, err := lookupItemID(ctx, tx, sourceID, relation.ChildExternalID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		parentID := sql.NullInt64{}
+		if relation.ParentExternalID != "" {
+			id, ok, err := lookupItemID(ctx, tx, sourceID, relation.ParentExternalID)
+			if err != nil {
+				return err
+			}
+			if ok {
+				parentID = sql.NullInt64{Int64: id, Valid: true}
+			}
+		}
+		_, err = tx.ExecContext(ctx, `
+INSERT INTO item_relations (source_id, root_item_id, parent_item_id, child_item_id, root_external_id, parent_external_id, child_external_id, relation_type, depth, path, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(source_id, root_external_id, child_external_id, relation_type) DO UPDATE SET
+	root_item_id = excluded.root_item_id,
+	parent_item_id = excluded.parent_item_id,
+	child_item_id = excluded.child_item_id,
+	parent_external_id = excluded.parent_external_id,
+	depth = excluded.depth,
+	path = excluded.path
+`, sourceID, rootID, parentID, childID, relation.RootExternalID, relation.ParentExternalID, relation.ChildExternalID, relation.RelationType, relation.Depth, relation.Path, dbTime(time.Now()))
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *Store) UpsertItemLinks(ctx context.Context, sourceID int64, links []model.ItemLink) error {
+	if len(links) == 0 {
+		return nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, link := range links {
+		if link.SourceID != 0 {
+			sourceID = link.SourceID
+		}
+		if sourceID == 0 {
+			return errors.New("link source_id is required")
+		}
+		if link.ItemExternalID == "" || link.URL == "" {
+			continue
+		}
+		if link.NormalizedURL == "" {
+			link.NormalizedURL = link.URL
+		}
+		itemID, ok, err := lookupItemID(ctx, tx, sourceID, link.ItemExternalID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		_, err = tx.ExecContext(ctx, `
+INSERT INTO item_links (item_id, source_id, item_external_id, url, normalized_url, anchor_text, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(item_id, normalized_url) DO UPDATE SET
+	url = excluded.url,
+	anchor_text = excluded.anchor_text
+`, itemID, sourceID, link.ItemExternalID, link.URL, link.NormalizedURL, link.AnchorText, dbTime(time.Now()))
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *Store) ItemRelations(ctx context.Context, sourceID int64, rootExternalID string) ([]model.ItemRelation, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT id, source_id, root_item_id, COALESCE(parent_item_id, 0), child_item_id, root_external_id, parent_external_id, child_external_id, relation_type, depth, path, created_at
+FROM item_relations
+WHERE source_id = ? AND root_external_id = ?
+ORDER BY depth, path, id
+`, sourceID, rootExternalID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.ItemRelation
+	for rows.Next() {
+		relation, err := scanItemRelation(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, relation)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) ItemLinks(ctx context.Context, sourceID int64, itemExternalID string) ([]model.ItemLink, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT id, item_id, source_id, item_external_id, url, normalized_url, anchor_text, created_at
+FROM item_links
+WHERE source_id = ? AND item_external_id = ?
+ORDER BY id
+`, sourceID, itemExternalID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.ItemLink
+	for rows.Next() {
+		link, err := scanItemLink(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, link)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) SearchItems(ctx context.Context, query string, limit int) ([]model.Item, error) {
@@ -439,6 +590,41 @@ func scanItem(scanner interface{ Scan(dest ...any) error }) (model.Item, error) 
 	return item, nil
 }
 
+func scanItemRelation(scanner interface{ Scan(dest ...any) error }) (model.ItemRelation, error) {
+	var relation model.ItemRelation
+	var created string
+	err := scanner.Scan(
+		&relation.ID,
+		&relation.SourceID,
+		&relation.RootItemID,
+		&relation.ParentItemID,
+		&relation.ChildItemID,
+		&relation.RootExternalID,
+		&relation.ParentExternalID,
+		&relation.ChildExternalID,
+		&relation.RelationType,
+		&relation.Depth,
+		&relation.Path,
+		&created,
+	)
+	if err != nil {
+		return model.ItemRelation{}, err
+	}
+	relation.CreatedAt = parseDBTime(created)
+	return relation, nil
+}
+
+func scanItemLink(scanner interface{ Scan(dest ...any) error }) (model.ItemLink, error) {
+	var link model.ItemLink
+	var created string
+	err := scanner.Scan(&link.ID, &link.ItemID, &link.SourceID, &link.ItemExternalID, &link.URL, &link.NormalizedURL, &link.AnchorText, &created)
+	if err != nil {
+		return model.ItemLink{}, err
+	}
+	link.CreatedAt = parseDBTime(created)
+	return link, nil
+}
+
 func scanRules(rows *sql.Rows) ([]model.Rule, error) {
 	var out []model.Rule
 	for rows.Next() {
@@ -455,6 +641,20 @@ func scanRules(rows *sql.Rows) ([]model.Rule, error) {
 		out = append(out, rule)
 	}
 	return out, rows.Err()
+}
+
+func lookupItemID(ctx context.Context, q interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}, sourceID int64, externalID string) (int64, bool, error) {
+	var id int64
+	err := q.QueryRowContext(ctx, `SELECT id FROM items WHERE source_id = ? AND external_id = ?`, sourceID, externalID).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return id, true, nil
 }
 
 func boolInt(v bool) int {
@@ -537,6 +737,41 @@ CREATE TABLE IF NOT EXISTS items (
 CREATE INDEX IF NOT EXISTS items_source_idx ON items(source_id, fetched_at);
 CREATE INDEX IF NOT EXISTS items_fetched_idx ON items(fetched_at);
 CREATE INDEX IF NOT EXISTS items_published_idx ON items(published_at);
+
+CREATE TABLE IF NOT EXISTS item_relations (
+	id INTEGER PRIMARY KEY,
+	source_id INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+	root_item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+	parent_item_id INTEGER REFERENCES items(id) ON DELETE CASCADE,
+	child_item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+	root_external_id TEXT NOT NULL,
+	parent_external_id TEXT NOT NULL DEFAULT '',
+	child_external_id TEXT NOT NULL,
+	relation_type TEXT NOT NULL DEFAULT 'child',
+	depth INTEGER NOT NULL DEFAULT 0,
+	path TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL DEFAULT '',
+	UNIQUE(source_id, root_external_id, child_external_id, relation_type)
+);
+
+CREATE INDEX IF NOT EXISTS item_relations_root_idx ON item_relations(source_id, root_external_id, depth);
+CREATE INDEX IF NOT EXISTS item_relations_child_idx ON item_relations(child_item_id);
+CREATE INDEX IF NOT EXISTS item_relations_parent_idx ON item_relations(parent_item_id);
+
+CREATE TABLE IF NOT EXISTS item_links (
+	id INTEGER PRIMARY KEY,
+	item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+	source_id INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+	item_external_id TEXT NOT NULL,
+	url TEXT NOT NULL,
+	normalized_url TEXT NOT NULL,
+	anchor_text TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL DEFAULT '',
+	UNIQUE(item_id, normalized_url)
+);
+
+CREATE INDEX IF NOT EXISTS item_links_source_idx ON item_links(source_id, item_external_id);
+CREATE INDEX IF NOT EXISTS item_links_normalized_idx ON item_links(normalized_url);
 
 CREATE TABLE IF NOT EXISTS rules (
 	id INTEGER PRIMARY KEY,

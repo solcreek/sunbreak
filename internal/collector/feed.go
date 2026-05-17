@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"radar/internal/model"
+	"sunbreak/internal/model"
 )
 
 type FeedCollector struct {
@@ -30,7 +30,7 @@ func (c *FeedCollector) Collect(ctx context.Context, source model.Source) (Resul
 	if err != nil {
 		return Result{}, err
 	}
-	req.Header.Set("User-Agent", "radar-monitor/0.1 (+https://example.invalid/radar)")
+	req.Header.Set("User-Agent", "sunbreak-monitor/0.1 (+https://example.invalid/sunbreak)")
 	req.Header.Set("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.1")
 	if source.ETag != "" {
 		req.Header.Set("If-None-Match", source.ETag)

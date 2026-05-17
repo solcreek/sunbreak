@@ -36,6 +36,32 @@ type Item struct {
 	RawJSON     string
 }
 
+type ItemRelation struct {
+	ID               int64
+	SourceID         int64
+	RootItemID       int64
+	ParentItemID     int64
+	ChildItemID      int64
+	RootExternalID   string
+	ParentExternalID string
+	ChildExternalID  string
+	RelationType     string
+	Depth            int
+	Path             string
+	CreatedAt        time.Time
+}
+
+type ItemLink struct {
+	ID             int64
+	ItemID         int64
+	SourceID       int64
+	ItemExternalID string
+	URL            string
+	NormalizedURL  string
+	AnchorText     string
+	CreatedAt      time.Time
+}
+
 type Rule struct {
 	ID            int64
 	Name          string

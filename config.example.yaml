@@ -2,7 +2,7 @@ server:
   addr: ":8080"
 
 database:
-  path: "data/radar.db"
+  path: "data/sunbreak.db"
 
 scheduler:
   poll_interval_seconds: 30
@@ -20,13 +20,21 @@ notifications:
 reddit:
   client_id: ""
   client_secret: ""
-  user_agent: "radar-monitor/0.1"
+  user_agent: "sunbreak-monitor/0.1"
 
 sources:
   - type: "hackernews"
     name: "Hacker News"
     enabled: true
     interval_seconds: 120
+    config:
+      include_comments: true
+      hits_per_page: 50
+      max_pages: 2
+      max_stories_per_run: 5
+      max_comments_per_story: 1000
+      max_depth: 64
+      overlap_seconds: 900
 
   - type: "rss"
     name: "Go Blog"

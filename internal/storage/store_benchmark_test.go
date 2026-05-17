@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"radar/internal/model"
+	"sunbreak/internal/model"
 )
 
 var itemSink []model.Item

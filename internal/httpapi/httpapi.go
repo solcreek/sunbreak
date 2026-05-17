@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"radar/internal/model"
-	"radar/internal/storage"
+	"sunbreak/internal/model"
+	"sunbreak/internal/storage"
 )
 
 type Runner interface {

@@ -91,7 +91,7 @@ func Default() Config {
 			Addr: ":8080",
 		},
 		Database: DatabaseConfig{
-			Path: "radar.db",
+			Path: "sunbreak.db",
 		},
 		Scheduler: SchedulerConfig{
 			PollIntervalSeconds:   30,
@@ -115,7 +115,7 @@ func (c *Config) ApplyDefaults() {
 		c.Server.Addr = ":8080"
 	}
 	if c.Database.Path == "" {
-		c.Database.Path = "radar.db"
+		c.Database.Path = "sunbreak.db"
 	}
 	if c.Scheduler.PollIntervalSeconds <= 0 {
 		c.Scheduler.PollIntervalSeconds = 30

@@ -1,3 +1,3 @@
-module radar/web
+module sunbreak/web
 
 go 1.22
