@@ -1,0 +1,24 @@
+[Unit]
+Description=Radar keyword monitoring service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=radar
+Group=radar
+WorkingDirectory=/opt/radar
+ExecStart=/usr/local/bin/radar -config /etc/radar/config.yaml
+Restart=always
+RestartSec=5
+Environment=REDDIT_CLIENT_ID=
+Environment=REDDIT_CLIENT_SECRET=
+Environment=REDDIT_USER_AGENT=radar-monitor/0.1
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/radar
+
+[Install]
+WantedBy=multi-user.target

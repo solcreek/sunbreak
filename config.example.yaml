@@ -1,0 +1,59 @@
+server:
+  addr: ":8080"
+
+database:
+  path: "data/radar.db"
+
+scheduler:
+  poll_interval_seconds: 30
+  batch_size: 10
+  collect_timeout_seconds: 20
+
+digest:
+  enabled: true
+  interval_seconds: 21600
+  window_hours: 24
+
+notifications:
+  stdout: true
+
+reddit:
+  client_id: ""
+  client_secret: ""
+  user_agent: "radar-monitor/0.1"
+
+sources:
+  - type: "hackernews"
+    name: "Hacker News"
+    enabled: true
+    interval_seconds: 120
+
+  - type: "rss"
+    name: "Go Blog"
+    url: "https://go.dev/blog/feed.atom"
+    enabled: true
+    interval_seconds: 900
+
+  - type: "reddit"
+    name: "Reddit Adapter"
+    enabled: true
+    interval_seconds: 1800
+
+rules:
+  - name: "Go"
+    type: "keyword"
+    pattern: "go"
+    case_sensitive: false
+    enabled: true
+
+  - name: "SQLite"
+    type: "keyword"
+    pattern: "sqlite"
+    case_sensitive: false
+    enabled: true
+
+  - name: "Alternatives"
+    type: "regex"
+    pattern: "\\balternative(s)?\\b"
+    case_sensitive: false
+    enabled: true
