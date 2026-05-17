@@ -98,6 +98,9 @@ func TestStoreCRUDAndQueryPaths(t *testing.T) {
 	if len(sources) != 1 || sources[0].ID != sourceID {
 		t.Fatalf("unexpected sources: %+v", sources)
 	}
+	if !store.HasFTS() {
+		t.Fatal("expected FTS to be enabled in sqlite_fts5 test run")
+	}
 	due, err := store.DueSources(ctx, 10)
 	if err != nil {
 		t.Fatal(err)
@@ -145,6 +148,21 @@ func TestStoreCRUDAndQueryPaths(t *testing.T) {
 	if !inserted || itemID == 0 {
 		t.Fatalf("expected inserted item, got id=%d inserted=%v", itemID, inserted)
 	}
+	generatedID, inserted, err := store.InsertItem(ctx, model.Item{
+		SourceID:   sourceID,
+		SourceType: "rss",
+		SourceName: "Feed",
+		URL:        "https://example.com/generated",
+		Title:      "Generated stable id",
+		Content:    "content",
+		FetchedAt:  time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !inserted || generatedID == 0 {
+		t.Fatalf("expected generated id item insert, id=%d inserted=%v", generatedID, inserted)
+	}
 	if _, inserted, err = store.InsertItem(ctx, model.Item{
 		SourceID:   sourceID,
 		ExternalID: "item-1",
@@ -163,7 +181,7 @@ func TestStoreCRUDAndQueryPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 1 {
+	if len(items) != 2 {
 		t.Fatalf("expected recent item search fallback, got %+v", items)
 	}
 

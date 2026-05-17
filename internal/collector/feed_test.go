@@ -161,6 +161,40 @@ func TestParseFeedTimeLayouts(t *testing.T) {
 	}
 }
 
+func TestFeedFallbackHelpers(t *testing.T) {
+	rss := rssFeed{}
+	rss.Channel.Items = []rssItem{{Title: "Title", Description: "Description", PubDate: "Date"}}
+	checkpoint := latestRSSCheckpoint(rss, "fallback")
+	if checkpoint == "" || checkpoint == "fallback" {
+		t.Fatalf("expected hash checkpoint fallback, got %q", checkpoint)
+	}
+	if latestRSSCheckpoint(rssFeed{}, "fallback") != "fallback" {
+		t.Fatal("expected empty RSS checkpoint fallback")
+	}
+
+	atom := atomFeed{Entries: []atomEntry{{Title: "Title", Summary: "Summary", Updated: "Date"}}}
+	checkpoint = latestAtomCheckpoint(atom, "fallback")
+	if checkpoint == "" || checkpoint == "fallback" {
+		t.Fatalf("expected atom hash checkpoint fallback, got %q", checkpoint)
+	}
+	if latestAtomCheckpoint(atomFeed{}, "fallback") != "fallback" {
+		t.Fatal("expected empty atom checkpoint fallback")
+	}
+	if firstAtomLink([]atomLink{{Rel: "self", Href: "https://example.com/self"}}) != "https://example.com/self" {
+		t.Fatal("expected first atom link fallback")
+	}
+}
+
+func TestParseFeedUnsupported(t *testing.T) {
+	items, checkpoint, err := parseFeed([]byte(`<html></html>`), model.Source{Checkpoint: "old"})
+	if err == nil {
+		t.Fatal("expected unsupported feed error")
+	}
+	if items != nil || checkpoint != "old" {
+		t.Fatalf("expected checkpoint preservation, got items=%+v checkpoint=%q", items, checkpoint)
+	}
+}
+
 const rssFixture = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>

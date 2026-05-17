@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"sunbreak/internal/config"
+	"sunbreak/internal/model"
 	"sunbreak/internal/storage"
 )
 
@@ -128,5 +129,81 @@ func TestRunOnceParsesMatchesPersistsAndSearches(t *testing.T) {
 	}
 	if digests[0].Subject != "Sunbreak digest: 1 matches" {
 		t.Fatalf("unexpected digest subject: %q", digests[0].Subject)
+	}
+}
+
+func TestRunOutboxMarksSentAndRetriesFailures(t *testing.T) {
+	ctx := context.Background()
+	store, err := storage.Open(ctx, filepath.Join(t.TempDir(), "outbox.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	cfg := config.Default()
+	cfg.Notifications.Stdout = false
+	service := New(cfg, store, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	_, err = store.InsertOutbox(ctx, modelOutbox("stdout", "Sent"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = store.InsertOutbox(ctx, modelOutbox("email", "Retry"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := service.RunOutbox(ctx); err != nil {
+		t.Fatal(err)
+	}
+	pending, err := store.PendingOutbox(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pending) != 0 {
+		t.Fatalf("expected sent message removed and failed message delayed for retry, got %+v", pending)
+	}
+}
+
+func TestSeedRejectsInvalidConfig(t *testing.T) {
+	ctx := context.Background()
+	store, err := storage.Open(ctx, filepath.Join(t.TempDir(), "seed.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	cfg := config.Default()
+	cfg.Sources = []config.SourceConfig{{Name: "Missing Type"}}
+	if err := New(cfg, store, slog.New(slog.NewTextHandler(io.Discard, nil))).Seed(ctx); err == nil {
+		t.Fatal("expected missing source type error")
+	}
+	cfg.Sources = nil
+	cfg.Rules = []config.RuleConfig{{Pattern: "sqlite"}}
+	if err := New(cfg, store, slog.New(slog.NewTextHandler(io.Discard, nil))).Seed(ctx); err == nil {
+		t.Fatal("expected missing rule name error")
+	}
+}
+
+func TestRetryDelayBounds(t *testing.T) {
+	if retryDelay(-1) != time.Minute {
+		t.Fatalf("unexpected negative retry delay: %s", retryDelay(-1))
+	}
+	if retryDelay(2) != 4*time.Minute {
+		t.Fatalf("unexpected retry delay: %s", retryDelay(2))
+	}
+	if retryDelay(20) != time.Hour {
+		t.Fatalf("expected max retry delay, got %s", retryDelay(20))
+	}
+	if min(1, 2) != 1 || min(2, 1) != 1 {
+		t.Fatal("min helper returned unexpected value")
+	}
+}
+
+func modelOutbox(channel, subject string) model.OutboxMessage {
+	return model.OutboxMessage{
+		Channel: channel,
+		Subject: subject,
+		Body:    "Body",
 	}
 }

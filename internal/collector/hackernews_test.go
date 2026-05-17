@@ -218,4 +218,9 @@ func TestHNConfigAndHelpers(t *testing.T) {
 	if normalizeHNURL("/item?id=1") != "https://news.ycombinator.com/item?id=1" {
 		t.Fatalf("unexpected relative URL normalization")
 	}
+	collector := NewHNCollector(http.DefaultClient)
+	collector.itemEndpoint = "https://example.com/items"
+	if collector.itemURL(42) != "https://example.com/items/42.json" {
+		t.Fatalf("unexpected item URL fallback: %s", collector.itemURL(42))
+	}
 }

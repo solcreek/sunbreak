@@ -94,6 +94,15 @@ func TestProbeHackerNewsValidatesInput(t *testing.T) {
 	}
 }
 
+func TestFetchPages(t *testing.T) {
+	if fetchPages(0) != 0 {
+		t.Fatal("expected zero pages for zero hits")
+	}
+	if fetchPages(1) != 1 || fetchPages(100) != 1 || fetchPages(101) != 2 {
+		t.Fatal("unexpected fetch page calculation")
+	}
+}
+
 func numericFilterUnix(t *testing.T, r *http.Request, prefix string) int64 {
 	t.Helper()
 	for _, value := range r.URL.Query()["numericFilters"] {

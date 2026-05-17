@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -116,6 +117,19 @@ func TestAPIRunnerEndpoints(t *testing.T) {
 	}
 }
 
+func TestAPIRunnerEndpointErrors(t *testing.T) {
+	store, err := storage.Open(context.Background(), filepath.Join(t.TempDir(), "api-runner-errors.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	handler := New(store, &fakeRunner{err: errors.New("runner failed")}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	assertStatus(t, handler, http.MethodPost, "/api/collect", nil, http.StatusInternalServerError)
+	assertStatus(t, handler, http.MethodPost, "/api/digest", nil, http.StatusInternalServerError)
+	assertStatus(t, handler, http.MethodPost, "/api/outbox/dispatch", nil, http.StatusInternalServerError)
+}
+
 func TestAPIRejectsInvalidRulePayload(t *testing.T) {
 	store, err := storage.Open(context.Background(), filepath.Join(t.TempDir(), "api-invalid.db"))
 	if err != nil {
@@ -124,6 +138,22 @@ func TestAPIRejectsInvalidRulePayload(t *testing.T) {
 	defer store.Close()
 	handler := New(store, &fakeRunner{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	assertStatus(t, handler, http.MethodPost, "/api/rules", bytes.NewBufferString("{"), http.StatusBadRequest)
+}
+
+func TestHTTPAPIHelpers(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/?bad=x&ok=12", nil)
+	if intParam(req, "missing", 7) != 7 {
+		t.Fatal("expected missing int fallback")
+	}
+	if intParam(req, "bad", 7) != 7 {
+		t.Fatal("expected invalid int fallback")
+	}
+	if intParam(req, "ok", 7) != 12 {
+		t.Fatal("expected parsed int")
+	}
+	if got := nonNil([]int(nil)); len(got) != 0 || got == nil {
+		t.Fatalf("expected non-nil empty slice, got %#v", got)
+	}
 }
 
 func assertArrayEndpoint(t *testing.T, handler http.Handler, path string) {

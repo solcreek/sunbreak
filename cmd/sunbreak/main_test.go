@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 )
 
@@ -64,5 +65,14 @@ func TestWriteCommandResultJSON(t *testing.T) {
 	}
 	if decoded["command"] != "migrate" {
 		t.Fatalf("unexpected command result: %+v", decoded)
+	}
+}
+
+func TestWriteCommandResultText(t *testing.T) {
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
+	writeCommandResultTo(io.Discard, "text", logger, map[string]any{"ok": true, "command": "collect-once"})
+	if !strings.Contains(logs.String(), "collect-once") {
+		t.Fatalf("expected text log to include command, got %q", logs.String())
 	}
 }
