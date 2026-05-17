@@ -66,7 +66,7 @@ func (a *API) sources(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, sources)
+	writeJSON(w, http.StatusOK, nonNil(sources))
 }
 
 func (a *API) rules(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +75,7 @@ func (a *API) rules(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, rules)
+	writeJSON(w, http.StatusOK, nonNil(rules))
 }
 
 func (a *API) createRule(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +118,7 @@ func (a *API) items(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, items)
+	writeJSON(w, http.StatusOK, nonNil(items))
 }
 
 func (a *API) matches(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +129,7 @@ func (a *API) matches(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, matches)
+	writeJSON(w, http.StatusOK, nonNil(matches))
 }
 
 func (a *API) digests(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +139,7 @@ func (a *API) digests(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, digests)
+	writeJSON(w, http.StatusOK, nonNil(digests))
 }
 
 func (a *API) collect(w http.ResponseWriter, r *http.Request) {
@@ -186,4 +186,11 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 
 func writeError(w http.ResponseWriter, err error) {
 	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+}
+
+func nonNil[T any](items []T) []T {
+	if items == nil {
+		return []T{}
+	}
+	return items
 }

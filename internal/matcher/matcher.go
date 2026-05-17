@@ -59,7 +59,9 @@ func New(rules []model.Rule) (*Matcher, error) {
 
 func (m *Matcher) Match(item model.Item) []Result {
 	text := item.Title + "\n" + item.Content + "\n" + item.URL
-	var out []Result
+	var lowerText string
+	lowerReady := false
+	out := make([]Result, 0, 4)
 	for _, rule := range m.rules {
 		if rule.regex != nil {
 			found := rule.regex.FindString(text)
@@ -70,7 +72,11 @@ func (m *Matcher) Match(item model.Item) []Result {
 		}
 		searchText := text
 		if !rule.rule.CaseSensitive {
-			searchText = strings.ToLower(searchText)
+			if !lowerReady {
+				lowerText = strings.ToLower(text)
+				lowerReady = true
+			}
+			searchText = lowerText
 		}
 		if strings.Contains(searchText, rule.term) {
 			out = append(out, Result{Rule: rule.rule, MatchedText: rule.rule.Pattern, Score: 1})

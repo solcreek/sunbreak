@@ -37,6 +37,26 @@ Health check:
 curl http://localhost:8080/healthz
 ```
 
+## Dashboard
+
+The local dashboard lives in `web/` and uses Vite, React, Tailwind CSS, and shadcn-style base components.
+
+Run the API in one terminal:
+
+```sh
+go run -tags sqlite_fts5 ./cmd/radar -config config.yaml
+```
+
+Run the dashboard in another terminal:
+
+```sh
+cd web
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173/`. The Vite dev server proxies `/api` and `/healthz` to `http://localhost:8080`.
+
 Trigger collection manually:
 
 ```sh
@@ -85,6 +105,23 @@ curl -X POST http://localhost:8080/api/rules \
   -H 'Content-Type: application/json' \
   -d '{"name":"My Product","type":"keyword","pattern":"my product","enabled":true}'
 ```
+
+## Benchmarks
+
+Run the focused benchmark suite:
+
+```sh
+go test -tags sqlite_fts5 -run '^$' -bench . -benchmem ./internal/matcher ./internal/storage
+```
+
+The current benchmarks cover:
+
+- matcher rule compilation
+- matcher throughput for 100 and 1,000 keyword rules
+- mixed keyword and regex matching
+- SQLite item inserts
+- SQLite FTS item search
+- recent match reads over seeded match data
 
 ## Deployment
 
