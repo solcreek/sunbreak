@@ -7,6 +7,7 @@ Use these defaults:
 - Prefer `sunbreak -describe` before constructing commands from memory.
 - Prefer `-output json` for one-shot commands.
 - Treat stdout as data and stderr as diagnostics when `-output json` is used.
+- If local data is too sparse for historical analysis, use `sunbreak backfill probe hackernews` before calling source APIs directly.
 - Do not rely on interactive prompts; commands must be fully specified by flags or JSON payloads.
 - Use probe or dry-run modes before commands that can write data, crawl large ranges, or dispatch notifications.
 - Keep result sets bounded. Prefer explicit limits, fields, pagination, or NDJSON streaming for large reads.
@@ -15,6 +16,7 @@ Use these defaults:
 Backfill-specific guidance:
 
 - Start with probe mode before run mode.
+- Current supported command: `sunbreak backfill probe hackernews --query <term> --from YYYY-MM-DD --to YYYY-MM-DD --output json`.
 - Use narrow keywords first; broad keywords like `ai` can produce millions of Hacker News hits.
 - Prefer time slicing for historical imports because public APIs may cap direct pagination.
 - Respect source terms, rate limits, and conservative request pacing.

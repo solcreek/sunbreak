@@ -17,6 +17,12 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "backfill" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		os.Exit(runBackfillCommand(ctx, os.Args[2:], os.Stdout, os.Stderr))
+	}
+
 	configPath := flag.String("config", "config.yaml", "Path to config YAML")
 	dbPath := flag.String("db", "", "Override SQLite database path")
 	collectOnce := flag.Bool("collect-once", false, "Run one due-source collection pass and exit")
@@ -121,7 +127,8 @@ func cliDescription() map[string]any {
 			"Prefer -output json for one-shot commands.",
 			"Treat stdout as data and stderr as diagnostics when -output json is used.",
 			"Use -describe to introspect supported flags at runtime instead of relying on stale documentation.",
-			"Backfill and mutating commands should support dry-run before they write local state.",
+			"When local data is too sparse for analysis, use sunbreak backfill probe before calling source APIs directly.",
+			"Backfill run and other mutating commands should support dry-run before they write local state.",
 		},
 		"flags": []map[string]any{
 			{"name": "config", "type": "string", "default": "config.yaml", "description": "Path to config YAML"},
@@ -137,6 +144,24 @@ func cliDescription() map[string]any {
 			"sunbreak -describe",
 			"sunbreak -config config.yaml -migrate -output json",
 			"sunbreak -config config.yaml -collect-once -output json",
+			"sunbreak backfill probe hackernews --query cloudflare --from 2024-01-01 --to 2026-05-17 --output json",
+		},
+		"commands": []map[string]any{
+			{
+				"name":        "backfill probe hackernews",
+				"description": "Estimate historical Hacker News Algolia hit counts and time-slice plans without writing local state.",
+				"writes":      false,
+				"flags": []map[string]any{
+					{"name": "query", "type": "string", "required": false, "description": "Single keyword or query to probe"},
+					{"name": "keywords", "type": "string", "required": false, "description": "Comma-separated keywords to probe"},
+					{"name": "from", "type": "string", "required": false, "description": "Start date/time, YYYY-MM-DD or RFC3339"},
+					{"name": "to", "type": "string", "required": false, "description": "End date/time, YYYY-MM-DD or RFC3339. Defaults to now"},
+					{"name": "since", "type": "string", "required": false, "description": "Relative window such as 24h, 30d, 52w, or 1y"},
+					{"name": "max-slice-hits", "type": "int", "default": 800, "description": "Target maximum hits per planned time slice"},
+					{"name": "max-slices", "type": "int", "default": 128, "description": "Maximum planned time slices before truncating"},
+					{"name": "output", "type": "enum", "values": []string{"json", "text"}, "default": "json", "description": "Output format"},
+				},
+			},
 		},
 	}
 }

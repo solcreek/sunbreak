@@ -126,7 +126,19 @@ sunbreak -config config.yaml -digest-once
 sunbreak -config config.yaml -dispatch-outbox
 sunbreak -describe
 sunbreak -config config.yaml -collect-once -output json
+sunbreak backfill probe hackernews --query cloudflare --from 2024-01-01 --to 2026-05-17 --output json
 ```
+
+### Backfill
+
+Forward collection is intentionally conservative. If local data is too sparse for analysis, use backfill probe before calling source APIs directly:
+
+```sh
+sunbreak backfill probe hackernews --query cloudflare --since 1y --output json
+sunbreak backfill probe hackernews --keywords cloudflare,workers,pages --from 2024-01-01 --to 2026-05-17 --output json
+```
+
+The current backfill command is read-only. It estimates Hacker News Algolia hit counts and returns a time-slice plan so agents can decide whether a query is narrow enough for historical import. `backfill run` is intentionally not implemented yet; when added, it should reuse the same slicing plan, support dry-run, write through the normal SQLite de-duplication path, and optionally fetch full HN threads through the Firebase item API.
 
 ### Agent-Friendly CLI
 
@@ -136,10 +148,18 @@ Sunbreak's CLI is designed to be safe for automation and AI agents:
 - `-output json` keeps stdout machine-readable for one-shot commands
 - diagnostics and logs go to stderr when JSON output is requested
 - `-describe` returns a runtime JSON schema for supported flags and examples
+- `backfill probe hackernews` covers the "local data is too sparse" discovery path without agents bypassing Sunbreak
 - future mutating commands, including backfill runs, should support `-dry-run`
 - future large result commands should support field selection, pagination, or NDJSON streaming
 - input validation should reject path traversal, control characters, embedded query strings in IDs, and double-encoded values before touching external APIs or local state
 - [CONTEXT.md](CONTEXT.md) captures the short agent operating contract for tools that load repository context
+
+## Roadmap
+
+- `backfill run hackernews`: import historical Algolia hits through time slicing, de-duplication, optional full-thread fetches, and dry-run.
+- Topic aggregation view: `GET /api/topics?cluster=auto` to group matches by time, source, and content similarity.
+- Sentiment annotation: asynchronous LLM post-processing for negative/neutral/positive labels per match.
+- Company blog source presets: optional RSS source bundles for official company blogs, such as Cloudflare, AWS, and Vercel.
 
 ## HTTP API
 

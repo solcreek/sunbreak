@@ -29,6 +29,13 @@ func TestCLIDescriptionIsMachineReadable(t *testing.T) {
 	if !sawOutput {
 		t.Fatal("expected output flag in schema")
 	}
+	commands, ok := description["commands"].([]map[string]any)
+	if !ok || len(commands) == 0 {
+		t.Fatalf("expected command schema, got %+v", description["commands"])
+	}
+	if commands[0]["name"] != "backfill probe hackernews" {
+		t.Fatalf("expected backfill probe command, got %+v", commands)
+	}
 }
 
 func TestWriteJSON(t *testing.T) {
