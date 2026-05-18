@@ -1,67 +1,81 @@
 # Sunbreak
 
-Sunbreak is an MVP F5Bot-like keyword monitoring service for a single cheap VPS.
+Sunbreak is a local-first keyword monitoring and research service inspired by
+tools like F5Bot. It collects supported public sources, matches keywords and
+regular expressions, stores the results locally, and exposes both an HTTP API
+and an agent-friendly CLI.
 
-It is designed around local primitives:
+The first target is a cheap single VPS, such as Hetzner. The implementation
+therefore favors simple primitives:
 
 - Go single binary
 - SQLite WAL for persistence
-- SQLite FTS5 when available
-- local source checkpoints
+- SQLite FTS5 for local search
+- config-file administration
 - local notification outbox
-- systemd-friendly process model
-- Docker Compose for simple deployment
+- systemd-friendly long-running process
+- optional Docker Compose deployment
 
-## Features
+Sunbreak is an MVP. It is useful for local monitoring, Hacker News research,
+and validating source adapters. It is not a full social listening platform.
 
-- RSS/Atom collector with `ETag` and `Last-Modified` conditional requests
-- Hacker News collector using Algolia `search_by_date` discovery and the HN Firebase item API for thread fetches
-- Reddit collector adapter with mock mode when OAuth credentials are absent
-- keyword and regex matching
-- persisted items, matches, outbox messages, and digests
-- persisted Hacker News thread relations and extracted item links
-- basic HTTP API
-- config-file based administration
+## What Works
+
+- RSS and Atom collection with `ETag` and `Last-Modified` support
+- Hacker News collection through Algolia discovery and the HN Firebase item API
+- Full Hacker News comment tree ingestion with nested relations preserved
+- Link extraction from Hacker News items and comments
+- Reddit adapter interface with mock mode when credentials are absent
+- Keyword and regex rules
+- Match persistence
+- Digest generation
+- Notification outbox with stdout dispatch
+- Basic HTTP API
+- Vite + React + Tailwind dashboard
+- Agent-friendly JSON CLI output
+- Read-only Hacker News backfill probe for historical range planning
 
 ## Source Policy
 
-Sunbreak is intended to be a self-hosted, personal/hobby keyword monitoring tool. It should be used with official APIs, feeds, webhooks, or other publisher-supported access paths whenever they are available.
+Sunbreak should be used with official APIs, RSS/Atom feeds, webhooks, public
+archives, or other publisher-supported access paths.
 
-This project is not intended for bypassing rate limits, access controls, robots policies, paywalls, login walls, or platform restrictions. Do not use proxy rotation, credential sharing, browser automation, or other evasive techniques to access data that a source does not intend to make available to your app.
+Do not use Sunbreak to bypass rate limits, paywalls, login walls, robots
+policies, access controls, platform restrictions, or source terms. Do not add
+proxy rotation, credential sharing, stealth browser automation, or similar
+evasive behavior.
 
-For every source you enable:
+For every enabled source:
 
-- read and follow the source's terms of service, developer terms, API terms, and documentation
-- identify your app honestly with OAuth credentials or an appropriate user agent when required
-- respect rate-limit headers, `Retry-After`, backoff responses, and documented polling guidance
-- prefer push/feed/API-first access before HTML crawling
-- keep polling intervals conservative and add jitter for repeated requests
-- store only what you need for monitoring, search, and auditability
+- read the source's current terms, developer policy, and API documentation
+- identify the app honestly when credentials or user agents are required
+- respect rate limits, `Retry-After`, `429`, `403`, and transient `5xx`
+  responses
+- prefer API, feed, or push-based access before HTML crawling
+- poll conservatively and add jitter when a source is checked repeatedly
+- store only what is needed for monitoring, search, and auditability
 - avoid collecting private, deleted, gated, or otherwise restricted content
-- avoid using collected user content to train AI/ML models unless you have the rights and permissions required by the source
+- do not use collected user content for model training unless you have the
+  necessary rights and permissions
 
 ### Reddit
 
-Reddit is a priority source for Sunbreak, but it has specific developer and data-use requirements. Before enabling Reddit ingestion, review:
+Reddit support is intentionally conservative. Live Reddit ingestion should use
+approved OAuth credentials and Reddit's current Data API rules. The MVP keeps a
+Reddit adapter interface and mock path so the rest of the pipeline can be
+tested without scraping Reddit.
 
-- [Reddit Developer Terms](https://redditinc.com/policies/developer-terms)
-- [Reddit Data API Terms](https://redditinc.com/policies/data-api-terms)
-- [Reddit Data API Wiki](https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki)
-- [Reddit API documentation](https://www.reddit.com/dev/api/)
+For Reddit, Sunbreak should prefer:
 
-The Reddit Data API Wiki currently states that eligible free Data API use requires OAuth and is rate limited at 100 queries per minute per OAuth client ID. Traffic not using OAuth or login credentials may be blocked, and the default rate limit may not apply.
+- explicit subreddit watchlists
+- read-only ingestion
+- conservative polling
+- rate-limit-aware backoff
+- official API access once approved
+- RSS only as low-frequency discovery, not as a complete historical source
 
-Sunbreak's Reddit adapter should therefore:
-
-- require user-provided OAuth credentials for live ingestion
-- read and obey `X-Ratelimit-*` headers
-- back off on `429`, `403`, and transient `5xx` responses
-- support scoped polling, such as explicit subreddits or search queries, instead of broad collection
-- default to conservative polling intervals
-- avoid storing full raw payloads longer than needed
-- avoid automated posting, voting, messaging, moderation actions, or user impersonation
-
-If your intended use goes beyond personal self-hosted monitoring, or if you want large-scale Reddit data access, review Reddit's current commercial/data licensing requirements before using Sunbreak.
+Sunbreak should not use unofficial Reddit scrapers, browser-cookie sidecars, or
+HTML scraping as default data sources.
 
 ## Quick Start
 
@@ -78,17 +92,24 @@ Health check:
 curl http://localhost:8080/healthz
 ```
 
+Run one collection pass:
+
+```sh
+go run -tags sqlite_fts5 ./cmd/sunbreak -config config.yaml -collect-once
+```
+
 ## Dashboard
 
-The local dashboard lives in `web/` and uses Vite, React, Tailwind CSS, and shadcn-style base components.
+The dashboard lives in `web/` and uses Vite, React, Tailwind CSS, and
+shadcn-style base components.
 
-Run the API in one terminal:
+Run the API:
 
 ```sh
 go run -tags sqlite_fts5 ./cmd/sunbreak -config config.yaml
 ```
 
-Run the dashboard in another terminal:
+Run the dashboard:
 
 ```sh
 cd web
@@ -96,25 +117,8 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173/`. The Vite dev server proxies `/api` and `/healthz` to `http://localhost:8080`.
-
-Trigger collection manually:
-
-```sh
-curl -X POST http://localhost:8080/api/collect
-```
-
-List matches:
-
-```sh
-curl http://localhost:8080/api/matches
-```
-
-Search ingested items:
-
-```sh
-curl 'http://localhost:8080/api/items?query=sqlite&limit=20'
-```
+Open `http://localhost:5173/`. The Vite dev server proxies `/api` and
+`/healthz` to `http://localhost:8080`.
 
 ## CLI
 
@@ -126,40 +130,37 @@ sunbreak -config config.yaml -digest-once
 sunbreak -config config.yaml -dispatch-outbox
 sunbreak -describe
 sunbreak -config config.yaml -collect-once -output json
-sunbreak backfill probe hackernews --query cloudflare --from 2024-01-01 --to 2026-05-17 --output json
 ```
 
-### Backfill
+### Hacker News Backfill Probe
 
-Forward collection is intentionally conservative. If local data is too sparse for analysis, use backfill probe before calling source APIs directly:
+Forward collection is intentionally conservative. If local data is too sparse
+for historical analysis, use the read-only backfill probe before calling source
+APIs directly:
 
 ```sh
 sunbreak backfill probe hackernews --query cloudflare --since 1y --output json
 sunbreak backfill probe hackernews --keywords cloudflare,workers,pages --from 2024-01-01 --to 2026-05-17 --output json
 ```
 
-The current backfill command is read-only. It estimates Hacker News Algolia hit counts and returns a time-slice plan so agents can decide whether a query is narrow enough for historical import. `backfill run` is intentionally not implemented yet; when added, it should reuse the same slicing plan, support dry-run, write through the normal SQLite de-duplication path, and optionally fetch full HN threads through the Firebase item API.
+The probe estimates Hacker News Algolia hit counts and returns a time-slice
+plan. It does not write local state. A future `backfill run` should reuse the
+same slicing strategy, support `--dry-run`, write through SQLite
+de-duplication, and optionally enrich results with full HN thread data.
 
-### Agent-Friendly CLI
+### Agent-Friendly Operation
 
-Sunbreak's CLI is designed to be safe for automation and AI agents:
+Sunbreak is designed to be usable by automation and AI agents:
 
 - commands are non-interactive and flag-driven
 - `-output json` keeps stdout machine-readable for one-shot commands
 - diagnostics and logs go to stderr when JSON output is requested
 - `-describe` returns a runtime JSON schema for supported flags and examples
-- `backfill probe hackernews` covers the "local data is too sparse" discovery path without agents bypassing Sunbreak
-- future mutating commands, including backfill runs, should support `-dry-run`
-- future large result commands should support field selection, pagination, or NDJSON streaming
-- input validation should reject path traversal, control characters, embedded query strings in IDs, and double-encoded values before touching external APIs or local state
-- [CONTEXT.md](CONTEXT.md) captures the short agent operating contract for tools that load repository context
+- `backfill probe hackernews` covers the "local data is too sparse" path
+- future mutating commands should support `--dry-run`
+- large result commands should support limits, pagination, or NDJSON streaming
 
-## Roadmap
-
-- `backfill run hackernews`: import historical Algolia hits through time slicing, de-duplication, optional full-thread fetches, and dry-run.
-- Topic aggregation view: `GET /api/topics?cluster=auto` to group matches by time, source, and content similarity.
-- Sentiment annotation: asynchronous LLM post-processing for negative/neutral/positive labels per match.
-- Company blog source presets: optional RSS source bundles for official company blogs, such as Cloudflare, AWS, and Vercel.
+See [CONTEXT.md](CONTEXT.md) for the short agent operating contract.
 
 ## HTTP API
 
@@ -182,9 +183,33 @@ curl -X POST http://localhost:8080/api/rules \
   -d '{"name":"My Product","type":"keyword","pattern":"my product","enabled":true}'
 ```
 
-## Test Suites
+Search ingested items:
 
-Run the Go test suite with SQLite FTS5 enabled:
+```sh
+curl 'http://localhost:8080/api/items?query=sqlite&limit=20'
+```
+
+List recent matches:
+
+```sh
+curl 'http://localhost:8080/api/matches?hours=24&limit=20'
+```
+
+## Configuration
+
+Start from [config.example.yaml](config.example.yaml). The example includes:
+
+- one Hacker News source
+- one RSS source
+- one Reddit adapter source in mock mode
+- sample keyword and regex rules
+- stdout notification dispatch
+
+Local database files live under `data/` by default and are ignored by git.
+
+## Testing
+
+Run Go tests with SQLite FTS5 enabled:
 
 ```sh
 go test -tags sqlite_fts5 ./...
@@ -196,21 +221,7 @@ Run the coverage gate:
 scripts/test/coverage.sh
 ```
 
-The early verification suite covers:
-
-- collector behavior with controlled HTTP status codes, headers, response shape, and item counts
-- RSS/Atom parsing, checkpoint handling, and conditional request metadata
-- Hacker News query construction and response normalization
-- Hacker News full-thread expansion, nested relation preservation, and link extraction
-- parse/preprocess -> SQLite persistence -> FTS search -> match/outbox/digest pipeline
-- config defaulting and YAML loading
-- matcher keyword/regex behavior and invalid rule rejection
-- digest grouping and truncation
-- HTTP API read/write and runner endpoints
-- notification dispatch behavior
-- storage CRUD, de-duplication, search, matches, outbox, digests, item links, and item relations
-
-Run the dashboard checks:
+Run dashboard checks:
 
 ```sh
 cd web
@@ -218,30 +229,24 @@ npm run lint
 npm run build
 ```
 
-Run a local Docker deployment smoke test:
+Run a local Docker smoke test:
 
 ```sh
 scripts/smoke/docker-local.sh
 ```
 
-The smoke script builds the image, starts a temporary container on `127.0.0.1:18080`, checks `/healthz`, and removes the container.
+The current test suite covers collectors, source checkpointing, Hacker News
+thread expansion, RSS parsing, SQLite persistence, FTS search, matching,
+digests, outbox dispatch, HTTP endpoints, and CLI backfill probing.
 
 ## Benchmarks
-
-Run the focused benchmark suite:
 
 ```sh
 go test -tags sqlite_fts5 -run '^$' -bench . -benchmem ./internal/matcher ./internal/storage
 ```
 
-The current benchmarks cover:
-
-- matcher rule compilation
-- matcher throughput for 100 and 1,000 keyword rules
-- mixed keyword and regex matching
-- SQLite item inserts
-- SQLite FTS item search
-- recent match reads over seeded match data
+Benchmarks currently cover matcher compilation, keyword/regex matching,
+SQLite item insertion, FTS search, and recent match reads.
 
 ## Deployment
 
@@ -251,7 +256,8 @@ Build a Linux binary:
 go build -tags sqlite_fts5 -o sunbreak ./cmd/sunbreak
 ```
 
-Run with systemd using [deployments/systemd/sunbreak.service](deployments/systemd/sunbreak.service).
+Run with systemd using
+[deployments/systemd/sunbreak.service](deployments/systemd/sunbreak.service).
 
 Or use Docker Compose:
 
@@ -259,20 +265,15 @@ Or use Docker Compose:
 docker compose up --build
 ```
 
-## Data Retention
+## Roadmap
 
-This MVP does not yet enforce retention automatically. The intended first policy is:
+- `backfill run hackernews` for historical import with dry-run support
+- topic aggregation API and dashboard view
+- HN opportunity-analysis recipes for recurring pain and market research
+- source presets for company blogs and changelogs
+- credentialed Reddit API adapter after approval-oriented design work
+- richer notification channels
 
-- raw item payloads: 7-30 days
-- normalized items: 30-180 days
-- matches: 1-2 years
-- digests and aggregates: long-lived
+## License
 
-## Current Non-Goals
-
-- no response/reply workflows
-- no proxy rotation
-- no Kafka/Redis/Elasticsearch/Kubernetes
-- no full-world firehose indexing
-- no production Reddit OAuth ingestion yet
-- no LLM provider integration yet; digest is deterministic and asynchronous
+No license file has been added yet.
