@@ -19,6 +19,42 @@ therefore favors simple primitives:
 Sunbreak is an MVP. It is useful for local monitoring, Hacker News research,
 and validating source adapters. It is not a full social listening platform.
 
+## Why Sunbreak?
+
+Some sources already expose useful search APIs. Hacker News is the clearest
+example: the public Algolia API is excellent for quick discovery, historical
+searches, and ad hoc analysis.
+
+Using a source API directly is often the right choice when you need a one-off
+answer:
+
+- fewer moving parts
+- no local database to operate
+- fast experiments with `curl`, `jq`, or notebooks
+- direct access to the source's current search behavior
+
+Sunbreak adds value when the work needs to become repeatable, local, and
+operational:
+
+- query plans are explicit and reproducible
+- historical probes can split large ranges before pagination caps hide data
+- results can be cached in SQLite and searched locally with FTS5
+- Hacker News stories can be enriched with complete nested comment trees
+- links, relations, matches, digests, and source checkpoints are persisted
+- monitoring can continue forward from the backfilled or probed baseline
+- automation can use stable JSON output instead of source-specific API shapes
+
+In short:
+
+```text
+HN Algolia API = excellent raw discovery/search API
+Sunbreak       = local monitoring and research memory built on top of sources
+```
+
+Sunbreak should not hide the existence of good source APIs. It should make
+them safer to use repeatedly, easier to audit, and more useful for long-running
+monitoring and analysis.
+
 ## What Works
 
 - RSS and Atom collection with `ETag` and `Last-Modified` support
